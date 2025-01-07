@@ -9,18 +9,30 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/api/articles', async (req, res) => {
+    let browser;
     try {
-        const browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu'
+            ],
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome'
         });
+
         const page = await browser.newPage();
 
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
+        console.log('Sayfaya gidiliyor...');
         await page.goto('https://seyler.eksisozluk.com', {
-            waitUntil: 'networkidle0'
+            waitUntil: 'networkidle0',
+            timeout: 30000
         });
 
+        console.log('Sayfa yüklendi, içerik analiz ediliyor...');
         const articles = await page.evaluate(() => {
             const items = [];
             document.querySelectorAll('article.story, .content-card').forEach((el) => {
@@ -41,11 +53,19 @@ app.get('/api/articles', async (req, res) => {
             return items;
         });
 
+        console.log(`${articles.length} makale bulundu`);
         await browser.close();
         res.json(articles);
     } catch (error) {
         console.error('Hata:', error);
-        res.status(500).json({ error: 'Veriler alınamadı' });
+        if (browser) {
+            await browser.close();
+        }
+        res.status(500).json({
+            error: 'Veriler alınamadı',
+            message: error.message,
+            stack: error.stack
+        });
     }
 });
 
