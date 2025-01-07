@@ -11,15 +11,20 @@ app.use(express.json());
 app.get('/api/articles', async (req, res) => {
     let browser;
     try {
+        console.log('Chrome başlatılıyor...');
+        console.log('Chrome yolu:', process.env.PUPPETEER_EXECUTABLE_PATH);
+
         browser = await puppeteer.launch({
             headless: 'new',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--single-process'
             ],
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome'
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+            ignoreHTTPSErrors: true
         });
 
         const page = await browser.newPage();
